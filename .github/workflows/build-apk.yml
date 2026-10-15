@@ -29,27 +29,32 @@ steps:
       ls -la
 
       if [ -f "LiquidGlassSiri-Project.zip" ]; then
-        unzip -o "LiquidGlassSiri-Project.zip" -d extracted
+        unzip -o LiquidGlassSiri-Project.zip -d extracted
       fi
 
       if [ -f "gradlew" ]; then
-        echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+        PROJECT_DIR="."
       elif [ -f "extracted/gradlew" ]; then
-        echo "PROJECT_DIR=extracted" >> "$GITHUB_ENV"
+        PROJECT_DIR="extracted"
+      elif [ -f "LiquidGlassSiri/gradlew" ]; then
+        PROJECT_DIR="LiquidGlassSiri"
       else
-        WRAPPER=$(find . -type f -name gradlew -print -quit)
-        if [ -z "$WRAPPER" ]; then
-          echo "ERROR: Could not find gradlew or an Android Gradle project."
+        GRADLEW_PATH=$(find . -type f -name gradlew -print -quit)
+        if [ -z "$GRADLEW_PATH" ]; then
+          echo "ERROR: Could not find gradlew."
+          echo "Make sure your Android project files or ZIP are uploaded."
           exit 1
         fi
-        echo "PROJECT_DIR=$(dirname "$WRAPPER")" >> "$GITHUB_ENV"
+        PROJECT_DIR=$(dirname "$GRADLEW_PATH")
       fi
+
+      echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+      echo "Android project found at: $PROJECT_DIR"
 
   - name: Make Gradle wrapper executable
     run: chmod +x "$PROJECT_DIR/gradlew"
 
   - name: Build debug APK
-    working-directory: .
     run: |
       cd "$PROJECT_DIR"
       ./gradlew --no-daemon assembleDebug
@@ -59,5 +64,6 @@ steps:
     with:
       name: LiquidGlassSiri-debug-APK
       path: |
-        **/build/outputs/apk/debug/*.apk
+        ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
       if-no-files-found: error
+      retention-days: 7
